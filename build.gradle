@@ -1,18 +1,19 @@
-defaultTasks 'clean'
 version='1.0.0'
-group='com.ustream.tv.rokka'
+group='tv.ustream.rokka'
 
-allprojects {
-    apply from: rootProject.file('gradle/common.gradle')
-    repositories {
-        mavenCentral()
-        maven { url project.'archiva.repo.internal' }
-        maven { url project.'archiva.repo.snapshot' }
-    }
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'idea'
+
+dependencies {
+    compile 'org.slf4j:slf4j-simple:1.6.1'
+    testCompile 'junit:junit:4.10'
+    testCompile 'org.mockito:mockito-all:1.9.5'
 }
 
-apply from: 'gradle/deps.gradle'
-apply from: 'gradle/jar.gradle'
+repositories {
+    mavenCentral()
+}
 
 task wrapper(type: Wrapper) {
     gradleVersion = '1.6'
