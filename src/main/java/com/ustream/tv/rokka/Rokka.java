@@ -76,18 +76,6 @@ public class Rokka
     }
 
     //todo make an interface for single thread and multithreads
-    /*
-    *[8/24/13 9:51:18 AM] Gábor Nyerges: Rokka: Ha ugyanaz a thread rak be amelyik kivesz egy queubol (specialis eset,amikor nincs kulon appthreadek) akkor meg lehet uszni az atomicot? Ugyanazon az interfecen akarom athajtani (add,removeAll)
-[8/24/13 9:52:30 AM] Farkas Gábor: ja, ha csak 1 threaden van az egész akkor semmilyen atomic és violate nem szükséges
-[8/24/13 10:02:40 AM] Gábor Nyerges: kvazi akkor ha eltarolom inicializalaskor a hivo threadet, akkor add hivasnal a Thread.currentThread-el vizsgalva meg lehet nezni hogy kell e atomic.
-[8/24/13 10:02:58 AM] Gábor Nyerges: return new Rokka(20*1000*1000); helyett return new Rokka(Thread.currentThread,20*1000*1000);
-[8/24/13 10:03:04 AM] Farkas Gábor: de az már több erőforrás
-[8/24/13 10:03:18 AM] Gábor Nyerges: ja akkor nem is erdemes ezzel veszodni
-[8/24/13 10:04:02 AM] Farkas Gábor: esetleg azt lehetne csinálni hogy interface osztály kellene ráhúzni és ami nem külön threades azt leimplámentálni
-[8/24/13 10:04:27 AM] Gábor Nyerges: szal a Rokka-ra egy interface-t?
-[8/24/13 10:04:46 AM] Farkas Gábor: lehetne: IRokka, Rokka(MultiThreadRokka) illetve SingleThreadRokka
-[8/24/13 10:05:38 AM] Farkas Gábor: vagy hasonló, így a kommunikáció feldolgozót simán lehetne majd fejleszteni illetve más módszereket kipróbálni/összehasonlítani
-     */
     public boolean add(RokkaEvent data, long timeOutInMs)
     {
         int freeWriteIndex;
