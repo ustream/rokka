@@ -1,16 +1,9 @@
-package com.ustream.tv.rokka.events;
-
-import com.ustream.tv.rokka.events.RokkaBatchedEvent;
-import com.ustream.tv.rokka.events.RokkaEvent;
+package tv.ustream.rokka.events;
 
 import java.util.Iterator;
 
 /**
- * Created with IntelliJ IDEA.
- * User: bingobango
- * Date: 6/27/13
- * Time: 4:30 PM
- * To change this template use File | Settings | File Templates.
+ * @author bingobango
  */
 public class RokkaOutEvent implements Iterable<RokkaEvent>
 {

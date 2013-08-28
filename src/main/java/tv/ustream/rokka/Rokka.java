@@ -1,14 +1,10 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-package com.ustream.tv.rokka;
+package tv.ustream.rokka;
 
-import com.ustream.tv.rokka.events.RokkaBatchedEvent;
-import com.ustream.tv.rokka.events.RokkaEvent;
-import com.ustream.tv.rokka.events.RokkaOutEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tv.ustream.rokka.events.RokkaBatchedEvent;
+import tv.ustream.rokka.events.RokkaEvent;
+import tv.ustream.rokka.events.RokkaOutEvent;
 
 import java.util.Arrays;
 import java.util.List;
@@ -51,6 +47,9 @@ public final class Rokka
 
     public boolean add(RokkaEvent data, long timeOutInMs)
     {
+        int a = 0;
+        int b = a << 2;
+
         return add(new RokkaBatchedEvent(data), timeOutInMs);
     }
 
@@ -80,7 +79,7 @@ public final class Rokka
             {
                 if (nextFreeWriteIndex.compareAndSet(freeWriteIndex, generateWriteNextIndex))
                 {
-                    if (freeWriteIndex<0)
+                    if (freeWriteIndex < 0)
                     {
                         freeWriteIndex=0;
                     }

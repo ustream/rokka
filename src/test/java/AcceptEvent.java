@@ -1,13 +1,10 @@
-import com.ustream.tv.rokka.events.RokkaEvent;
+import tv.ustream.rokka.events.RokkaEvent;
 
 /**
- * Created with IntelliJ IDEA.
- * User: gabornyerges
- * Date: 8/27/13
- * Time: 2:36 PM
- * To change this template use File | Settings | File Templates.
+ * @author gabz
  */
-public class AcceptEvent extends RokkaEvent {
+public class AcceptEvent extends RokkaEvent
+{
 
     public AcceptEvent(Object data)
     {

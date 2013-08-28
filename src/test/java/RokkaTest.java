@@ -1,16 +1,12 @@
-import com.ustream.tv.rokka.Rokka;
-import com.ustream.tv.rokka.events.RokkaEvent;
-import com.ustream.tv.rokka.events.RokkaOutEvent;
+import tv.ustream.rokka.Rokka;
+import tv.ustream.rokka.events.RokkaEvent;
+import tv.ustream.rokka.events.RokkaOutEvent;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created with IntelliJ IDEA.
- * User: gabornyerges
- * Date: 8/27/13
- * Time: 2:27 PM
- * To change this template use File | Settings | File Templates.
+ * @author bingobango
  */
 public class RokkaTest {
 
