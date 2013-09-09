@@ -2,13 +2,18 @@ package tv.ustream.rokka;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import tv.ustream.rokka.events.RokkaBatchedEvent;
+import sun.misc.Unsafe;
 import tv.ustream.rokka.events.RokkaEvent;
 import tv.ustream.rokka.events.RokkaOutEvent;
 
+import java.lang.reflect.Field;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 /**
  * Rokka: High Performance Inter-Thread Messaging Libaray
@@ -17,7 +22,31 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class Rokka
 {
+    private static final int DEFAULT_MAX_ROKKA_ARRAY_SIZE = 1 * 1000 * 1000;
     private final Logger log = LoggerFactory.getLogger(Rokka.class);
+
+    public static int convertStringtoInteger(final String stringValue, final int defaultValueInt)
+    {
+        if (stringValue != null)
+        {
+            try
+            {
+                return Integer.valueOf(stringValue,10);
+            } catch (Exception e)
+            {}
+        }
+        return defaultValueInt;
+    }
+
+    public static void setRokkaQueueSizeCurrentThread(final int queueSize)
+    {
+        if (queueSize<1)
+        {
+            throw new IndexOutOfBoundsException();
+        }
+        String cThreadName = Thread.currentThread().getName();
+        System.setProperty("rokka." + cThreadName, "" + queueSize);
+    }
 
     public static final ThreadLocal<Rokka> queue = new ThreadLocal<Rokka>()
     {
@@ -25,65 +54,53 @@ public final class Rokka
         protected Rokka initialValue()
         {
             System.out.println("Creating Rokka Queue for thread: " + Thread.currentThread().getName());
-            //TODO configure size!
-            return new Rokka(20 * 1000 * 1000);
+            int size = convertStringtoInteger(
+                    System.getProperty("rokka." + Thread.currentThread().getName(), null),
+                    DEFAULT_MAX_ROKKA_ARRAY_SIZE);
+            return new Rokka(size);
         }
     };
-    private final int maxQueueSize;
-    private final RokkaBatchedEvent[] queues;
-    private final AtomicInteger nextFreeWriteIndex = new AtomicInteger(0);
-    private volatile int nextReadIndex = 0;
 
-    private Rokka(int queueSize)
+    private final int maxQueueSize;
+    private final Object[] array;
+
+    private final Thread thread;
+
+    private static final Object EMPTY = new Object();
+
+    private final AtomicLong writeAtomicIndex = new AtomicLong(0);
+    private volatile long readIndex = 0;
+
+    public Rokka(final int queueSize)
     {
         maxQueueSize = queueSize;
-        queues = new RokkaBatchedEvent[maxQueueSize];
+        array = new Object[maxQueueSize];
+        Arrays.fill(array,EMPTY);
+        this.thread = Thread.currentThread();
     }
 
-    public boolean add(List<RokkaEvent> datas, long timeOutInMs)
+    public boolean add(final List<RokkaEvent> data, final long timeOutInMs)
     {
-        return add(new RokkaBatchedEvent(datas), timeOutInMs);
+        return addData(data, timeOutInMs);
     }
 
-    public boolean add(RokkaEvent data, long timeOutInMs)
+    public boolean add(final RokkaEvent data, final long timeOutInMs)
     {
-        int a = 0;
-        int b = a << 2;
-
-        return add(new RokkaBatchedEvent(data), timeOutInMs);
+        return addData(data, timeOutInMs);
     }
 
-    private boolean add(RokkaBatchedEvent rokkaBatchedEvent, long timeOutInMs)
+    private boolean addData(final Object data, final long timeOutInMs)
     {
-        int freeWriteIndex;
-
-        int generateWriteNextIndex;
         long startTime = System.currentTimeMillis();
-
         for (;;)
         {
-            freeWriteIndex = nextFreeWriteIndex.get();
-            if (freeWriteIndex>=0)
+            long writeIndex = writeAtomicIndex.get();
+            long tmpWriteIndex =  writeIndex-readIndex;
+            if (tmpWriteIndex<maxQueueSize)
             {
-                generateWriteNextIndex = freeWriteIndex + 1;
-            }
-            else
-            {
-                generateWriteNextIndex=0;
-            }
-            if ( generateWriteNextIndex >= maxQueueSize )
-            {
-                generateWriteNextIndex = nextReadIndex == 0 ? -1 : 0;
-            }
-            if ( generateWriteNextIndex != nextReadIndex )
-            {
-                if (nextFreeWriteIndex.compareAndSet(freeWriteIndex, generateWriteNextIndex))
+                if(writeAtomicIndex.compareAndSet(writeIndex,writeIndex+1))
                 {
-                    if (freeWriteIndex < 0)
-                    {
-                        freeWriteIndex=0;
-                    }
-                    queues[freeWriteIndex] = rokkaBatchedEvent;
+                    array[(int)(writeIndex%maxQueueSize)]=data;
                     return true;
                 }
             }
@@ -94,82 +111,92 @@ public final class Rokka
         }
     }
 
-    public int getAvaibleReadQueueSize()
+    private void threadCheck()
     {
-        int tmpWriteNextIndex = nextFreeWriteIndex.get();
-        if (tmpWriteNextIndex >= nextReadIndex)
+        if (thread!=Thread.currentThread())
         {
-            return tmpWriteNextIndex - nextReadIndex;
-        } else
-        {
-            if (tmpWriteNextIndex == -1)
-            {
-                tmpWriteNextIndex = 0;
-            }
-            return maxQueueSize - nextReadIndex + tmpWriteNextIndex;
+            throw new IllegalStateException("Invalid Thread Access");
         }
     }
 
-    public RokkaBatchedEvent remove()
+    public Object remove()
     {
-        RokkaBatchedEvent result = null;
-        int readSize = getAvaibleReadQueueSize();
-        if (readSize > 0)
+        threadCheck();
+
+        Object result = null;
+        int tmpReadIndex = (int)(readIndex%maxQueueSize);
+        int maxIndex=0;
+        if (array[tmpReadIndex]==EMPTY)
         {
-            result = queues[nextReadIndex];
-            queues[nextReadIndex] = null; //clear reference from the buffer
-            nextReadIndex++;
-            if (nextReadIndex >= maxQueueSize)
-            {
-                nextReadIndex = 0;
-            }
-        } else
-        {
-            System.out.println("no free elem:" + nextReadIndex + " :: " + nextFreeWriteIndex.get());
+            return null;
         }
-        System.out.println("readSize:" + readSize + " ,nextReadIndex:" + nextReadIndex + " ,maxQueueSize:" + maxQueueSize + " ,nextFreeWriteIndex.get():" + nextFreeWriteIndex.get());
+        else
+        {
+            long maxPos = writeAtomicIndex.get();
+            maxIndex = (int)(maxPos%maxQueueSize);
+            int arrayPos = (int)(readIndex%maxQueueSize);
+            if (array[arrayPos]!=EMPTY)
+            {
+                result=array[arrayPos];
+                array[arrayPos]=EMPTY;
+                readIndex++;
+            }
+        }
         return result;
     }
 
     public RokkaOutEvent removeAll()
     {
-        //log.info("remove {} " , Thread.currentThread() );
+        threadCheck();
 
-        int splitSize = getAvaibleReadQueueSize();
-        return removeArrange(splitSize);
-    }
-
-    public RokkaOutEvent removeArrange(int size)
-    {
-        int splitSize = getAvaibleReadQueueSize();
-        RokkaBatchedEvent[] result = new RokkaBatchedEvent[splitSize > size ? size : splitSize];
-        splitSize = result.length;
-//        System.out.println("splitSize:"+splitSize+" ,nextReadIndex:"+nextReadIndex+" ,maxQueueSize:"+maxQueueSize);
-        if (splitSize > 0)
+        int tmpReadIndex = (int)(readIndex%maxQueueSize);
+        Object[] result;
+        int maxIndex=0;
+        if (array[tmpReadIndex]==EMPTY)
         {
-            if (nextReadIndex + splitSize > maxQueueSize)
+            result = new Object[0];
+        }
+        else
+        {
+            long maxPos = writeAtomicIndex.get();
+            maxIndex = (int)(maxPos%maxQueueSize);
+            result = new Object[(int)(maxPos-readIndex)];
+            long i;
+            int arrayPos;
+            for (i = readIndex; i <maxPos; i++)
             {
-                System.arraycopy(queues, nextReadIndex, result, 0, (maxQueueSize - nextReadIndex));
-                System.arraycopy(queues, 0, result, (maxQueueSize - nextReadIndex), splitSize - (maxQueueSize - nextReadIndex));
-                Arrays.fill(queues, nextReadIndex, (maxQueueSize - nextReadIndex), null);
-                Arrays.fill(queues, 0, splitSize - (maxQueueSize - nextReadIndex), null);
-                nextReadIndex = splitSize - (maxQueueSize - nextReadIndex);
-            } else
-            {
-                System.arraycopy(queues, nextReadIndex, result, 0, splitSize);
-                Arrays.fill(queues, nextReadIndex, nextReadIndex + splitSize, null);
-                nextReadIndex = nextReadIndex + splitSize;
-                if (nextReadIndex >= maxQueueSize)
+                arrayPos = (int)(i%maxQueueSize);
+                if (array[arrayPos]!=EMPTY)
                 {
-                    nextReadIndex = maxQueueSize;
+                    result[(int)(i-readIndex)]=array[arrayPos];
+                    array[arrayPos]=EMPTY;
+                }
+                else
+                {
+                    break;
                 }
             }
+            readIndex+=(i-readIndex);
         }
-//        System.out.println("set splitSize:"+splitSize+" ,nextReadIndex:"+nextReadIndex+" ,maxQueueSize:"+maxQueueSize);
-        RokkaOutEvent rokkaOutEvent = new RokkaOutEvent(result);
+        final RokkaOutEvent rokkaOutEvent = new RokkaOutEvent(result, tmpReadIndex, maxIndex);
         return rokkaOutEvent;
     }
 
+    public void clean() throws Exception
+    {
+        if (thread!=Thread.currentThread())
+        {
+            throw new Exception("Invalid Thread Access");
+        }
 
+        Arrays.fill(array,EMPTY);
+        writeAtomicIndex.set(0);
+        readIndex=0;
+    }
+
+    public int getMaxQueueSize()
+    {
+        return maxQueueSize;
+    }
 }
 

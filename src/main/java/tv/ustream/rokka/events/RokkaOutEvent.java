@@ -1,17 +1,23 @@
 package tv.ustream.rokka.events;
 
+import javax.management.Query;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * @author bingobango
  */
 public class RokkaOutEvent implements Iterable<RokkaEvent>
 {
-    private final RokkaBatchedEvent[] events;
+    private final Object[] events;
+    private final int startPos;
+    private final int endPos;
 
-    public RokkaOutEvent(RokkaBatchedEvent[] events)
+    public RokkaOutEvent(final Object[] events, int startPos, int endPos)
     {
         this.events = events;
+        this.startPos = startPos;
+        this.endPos = endPos;
     }
 
     @Override
@@ -40,23 +46,40 @@ public class RokkaOutEvent implements Iterable<RokkaEvent>
         {
             if ( events.length > actualPos )
             {
-                RokkaBatchedEvent event = events[actualPos];
+                Object event = events[actualPos];
                 if ( event != null )
                 {
-                    if ( event.rokkaEventList.size() > arrayIndex )
+                    if ( event instanceof List)
                     {
-                        nextElem = event.rokkaEventList.get(arrayIndex++);
+                        List tmpRokkaEventList = (List)event;
+                        if ( tmpRokkaEventList.size() > arrayIndex )
+                        {
+                            nextElem = (RokkaEvent)tmpRokkaEventList.get(arrayIndex++);
+                        }
+                        else
+                        {
+                            actualPos++;
+                            arrayIndex = 0;
+                            generatenextElem();
+                        }
+                    } else if ( event instanceof RokkaEvent )
+                    {
+                        nextElem = (RokkaEvent)event;
+                        actualPos++;
                     }
                     else
                     {
-                        actualPos++;
-                        arrayIndex=0;
-                        generatenextElem();
+                        nextElem = null;
                     }
                 }
                 else
                 {
+//                    System.out.println("NULL " + events.length + " :: " + actualPos + " --> " + event + " ,startPos:" + startPos +" ,endPos:" + endPos );
                     nextElem = null;
+                    /*
+                    actualPos++;
+                    generatenextElem();
+                    */
                 }
             }
             else
