@@ -11,10 +11,15 @@ import tv.ustream.rokka.events.RokkaEvent;
  */
 public class RokkaTestEvent extends RokkaEvent
 {
-    final public int id;
+    private final int id;
 
-    public RokkaTestEvent(int id)
+    public RokkaTestEvent(final int id)
     {
         this.id = id;
+    }
+
+    public final int getId()
+    {
+        return id;
     }
 }

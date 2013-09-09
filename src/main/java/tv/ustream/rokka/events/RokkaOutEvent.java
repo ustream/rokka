@@ -1,6 +1,5 @@
 package tv.ustream.rokka.events;
 
-import javax.management.Query;
 import java.util.Iterator;
 import java.util.List;
 
@@ -13,7 +12,7 @@ public class RokkaOutEvent implements Iterable<RokkaEvent>
     private final int startPos;
     private final int endPos;
 
-    public RokkaOutEvent(final Object[] events, int startPos, int endPos)
+    public RokkaOutEvent(final Object[] events, final int startPos, final int endPos)
     {
         this.events = events;
         this.startPos = startPos;
@@ -21,7 +20,8 @@ public class RokkaOutEvent implements Iterable<RokkaEvent>
     }
 
     @Override
-    public Iterator<RokkaEvent> iterator() {
+    public final Iterator<RokkaEvent> iterator()
+    {
         return new ResultEventsIterator();
     }
 
@@ -44,17 +44,17 @@ public class RokkaOutEvent implements Iterable<RokkaEvent>
 
         private void generatenextElem()
         {
-            if ( events.length > actualPos )
+            if (events.length > actualPos)
             {
                 Object event = events[actualPos];
-                if ( event != null )
+                if (event != null)
                 {
-                    if ( event instanceof List)
+                    if (event instanceof List)
                     {
-                        List tmpRokkaEventList = (List)event;
-                        if ( tmpRokkaEventList.size() > arrayIndex )
+                        List tmpRokkaEventList = (List) event;
+                        if (tmpRokkaEventList.size() > arrayIndex)
                         {
-                            nextElem = (RokkaEvent)tmpRokkaEventList.get(arrayIndex++);
+                            nextElem = (RokkaEvent) tmpRokkaEventList.get(arrayIndex++);
                         }
                         else
                         {
@@ -62,9 +62,10 @@ public class RokkaOutEvent implements Iterable<RokkaEvent>
                             arrayIndex = 0;
                             generatenextElem();
                         }
-                    } else if ( event instanceof RokkaEvent )
+                    }
+                    else if (event instanceof RokkaEvent)
                     {
-                        nextElem = (RokkaEvent)event;
+                        nextElem = (RokkaEvent) event;
                         actualPos++;
                     }
                     else
@@ -74,12 +75,7 @@ public class RokkaOutEvent implements Iterable<RokkaEvent>
                 }
                 else
                 {
-//                    System.out.println("NULL " + events.length + " :: " + actualPos + " --> " + event + " ,startPos:" + startPos +" ,endPos:" + endPos );
                     nextElem = null;
-                    /*
-                    actualPos++;
-                    generatenextElem();
-                    */
                 }
             }
             else
@@ -91,7 +87,7 @@ public class RokkaOutEvent implements Iterable<RokkaEvent>
         @Override
         public RokkaEvent next()
         {
-            if ( nextElem == null )
+            if (nextElem == null)
             {
                 return null;
             }
@@ -101,7 +97,8 @@ public class RokkaOutEvent implements Iterable<RokkaEvent>
         }
 
         @Override
-        public void remove() {
+        public void remove()
+        {
             throw new UnsupportedOperationException();
         }
     }

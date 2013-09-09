@@ -14,33 +14,33 @@ import java.util.concurrent.Executors;
  */
 public class SimpleModulusApp
 {
-    final int writeThreadCount;
-    final int eventSize;
-    final Map<Integer,Long> result = new HashMap<Integer,Long>();
-    final ModulusWriter[] writerClass;
-    final Rokka rokka;
+    private final int writeThreadCount;
+    private final int eventSize;
+    private final Map<Integer, Long> result = new HashMap<Integer, Long>();
+    private final ModulusWriter[] writerClass;
+    private final Rokka rokka;
 
-    public SimpleModulusApp(int writeThread, int eventSize)
+    protected SimpleModulusApp(final int writeThread, final int eventSize)
     {
         this.writeThreadCount = writeThread;
         this.eventSize = eventSize;
         writerClass = new ModulusWriter[writeThread];
         Rokka.setRokkaQueueSizeCurrentThread(eventSize);
-        rokka = Rokka.queue.get();
+        rokka = Rokka.QUEUE.get();
     }
 
-    public void startTest() throws InterruptedException
+    private void startTest() throws InterruptedException
     {
         ExecutorService es = Executors.newFixedThreadPool(writeThreadCount);
-        for (int i = 0; i <writerClass.length; i++)
+        for (int i = 0; i < writerClass.length; i++)
         {
-            writerClass[i] = new ModulusWriter(rokka, i*eventSize, eventSize);
+            writerClass[i] = new ModulusWriter(rokka, i * eventSize, eventSize);
             es.execute(writerClass[i]);
         }
         long elemCount = 0;
         RokkaOutEvent roe;
         long time;
-        while (elemCount<writeThreadCount*eventSize)
+        while (elemCount < writeThreadCount * eventSize)
         {
             roe = rokka.removeAll();
             for (RokkaEvent re : roe)
@@ -48,25 +48,26 @@ public class SimpleModulusApp
                 elemCount++;
                 if (re instanceof SimpleRokkaEvent)
                 {
-                    SimpleRokkaEvent sre = (SimpleRokkaEvent)re;
-                    int m = sre.id % 10;
+                    SimpleRokkaEvent sre = (SimpleRokkaEvent) re;
+                    int m = sre.getId() % 10;
                     Long v = result.get(m);
-                    if (v==null)
+                    if (v == null)
                     {
                         v = new Long(0);
                     }
                     v++;
-                    result.put(m,v);
+                    result.put(m, v);
                 }
             }
             Thread.sleep(2);
         }
-        System.out.println("Result:"+result);
+        System.out.println("Result:" + result);
+        es.shutdown();
     }
 
-    public static void main(String ...args) throws InterruptedException
+    public static void main(final String ...args) throws InterruptedException
     {
-        SimpleModulusApp sapp = new SimpleModulusApp(3, 5000000);
+        SimpleModulusApp sapp = new SimpleModulusApp(3, 1000000);
         sapp.startTest();
     }
 
@@ -76,7 +77,7 @@ public class SimpleModulusApp
         private final int startIndex;
         private final int count;
 
-        public ModulusWriter(Rokka mainRokka, int startIndex, int count)
+        public ModulusWriter(final Rokka mainRokka, final int startIndex, final int count)
         {
             this.rokka = mainRokka;
             this.startIndex = startIndex;
@@ -86,21 +87,29 @@ public class SimpleModulusApp
         @Override
         public void run()
         {
-            for (int i = startIndex; i < startIndex+count; i++)
+            for (int i = startIndex; i < startIndex + count; i++)
             {
                 SimpleRokkaEvent event = new SimpleRokkaEvent(i);
-                rokka.add(event, 10);
+                if (!rokka.add(event, 10))
+                {
+                    i--;
+                }
             }
         }
     }
 
     private class SimpleRokkaEvent extends RokkaEvent
     {
-        final int id;
+        private final int id;
 
-        public SimpleRokkaEvent(int id)
+        public SimpleRokkaEvent(final int id)
         {
             this.id = id;
+        }
+
+        public final int getId()
+        {
+            return id;
         }
     }
 }

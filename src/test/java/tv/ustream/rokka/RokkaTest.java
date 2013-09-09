@@ -6,9 +6,7 @@ import org.junit.Before;
 import org.junit.Test;
 import tv.ustream.rokka.events.RokkaOutEvent;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * Created with IntelliJ IDEA.
@@ -30,21 +28,7 @@ public class RokkaTest
     {
         Rokka.setRokkaQueueSizeCurrentThread(QUEUE_SIZE);
         generateTestEvents(TEST_EVENT_SIZE);
-        rokka = Rokka.queue.get();
-    }
-
-    private void generateTestEvents(int number) throws IndexOutOfBoundsException
-    {
-        if (number < 1)
-        {
-            throw new IndexOutOfBoundsException();
-        }
-
-        events = new RokkaTestEvent[number];
-        for (int i = 0; i <number; i++)
-        {
-            events[i] = new RokkaTestEvent(i);
-        }
+        rokka = Rokka.QUEUE.get();
     }
 
     @After
@@ -57,11 +41,26 @@ public class RokkaTest
         }
     }
 
+    private void generateTestEvents(final int number)
+    {
+        if (number < 1)
+        {
+            throw new IndexOutOfBoundsException();
+        }
+
+        events = new RokkaTestEvent[number];
+        for (int i = 0; i < number; i++)
+        {
+            events[i] = new RokkaTestEvent(i);
+        }
+    }
+
+
     @Test
     public void getMaxQueueSizeShouldBeCheckValidQueueSize()
     {
         int size = rokka.getMaxQueueSize();
-        Assert.assertEquals(QUEUE_SIZE,size);
+        Assert.assertEquals(QUEUE_SIZE, size);
     }
 
     @Test
@@ -71,7 +70,7 @@ public class RokkaTest
 
         for (int i = 0; i < QUEUE_SIZE; i++)
         {
-            result = rokka.add(events[i],TIME_OUT_IN_MS);
+            result = rokka.add(events[i], TIME_OUT_IN_MS);
             Assert.assertTrue(result);
 
             Object removeObj = rokka.remove();
@@ -85,17 +84,17 @@ public class RokkaTest
         boolean result;
         long startTime, endTime;
 
-        for (int i=0; i<QUEUE_SIZE; i++)
+        for (int i = 0; i < QUEUE_SIZE; i++)
         {
             rokka.add(events[i], TIME_OUT_IN_MS);
         }
 
         startTime = System.currentTimeMillis();
-        result = rokka.add(events[QUEUE_SIZE+1], TIME_OUT_IN_MS);
+        result = rokka.add(events[QUEUE_SIZE + 1], TIME_OUT_IN_MS);
         endTime = System.currentTimeMillis();
 
         Assert.assertFalse(result);
-        Assert.assertTrue((endTime-startTime)>=TIME_OUT_IN_MS);
+        Assert.assertTrue((endTime - startTime) >= TIME_OUT_IN_MS);
     }
 
     @Test
@@ -105,16 +104,16 @@ public class RokkaTest
 
         for (int i = 0; i < QUEUE_SIZE; i++)
         {
-            result = rokka.add(events[i],TIME_OUT_IN_MS);
+            result = rokka.add(events[i], TIME_OUT_IN_MS);
          }
 
-        RokkaOutEvent roe= rokka.removeAll();
+        RokkaOutEvent roe = rokka.removeAll();
         Assert.assertNotNull(roe);
 
         int pos = 0;
         for (Object elem : roe)
         {
-            Assert.assertEquals(events[pos++],elem);
+            Assert.assertEquals(events[pos++], elem);
         }
     }
 
@@ -128,7 +127,7 @@ public class RokkaTest
     @Test
     public void removeAllShouldBeResultEmptyIterator() throws Exception
     {
-        RokkaOutEvent roe= rokka.removeAll();
+        RokkaOutEvent roe = rokka.removeAll();
         Assert.assertNotNull(roe);
 
         Assert.assertFalse(roe.iterator().hasNext());
@@ -141,30 +140,30 @@ public class RokkaTest
 
         for (int i = 0; i < 5; i++)
         {
-            result = rokka.add(events[i],TIME_OUT_IN_MS);
+            result = rokka.add(events[i], TIME_OUT_IN_MS);
         }
 
         RokkaOutEvent roe = rokka.removeAll();
 
         for (int i = 5; i < 10; i++)
         {
-            result = rokka.add(events[i],TIME_OUT_IN_MS);
+            result = rokka.add(events[i], TIME_OUT_IN_MS);
         }
 
         rokka.remove();
 
-        for (int i=10; i<15; i++)
+        for (int i = 10; i < 16; i++)
         {
-            rokka.add(events[i],TIME_OUT_IN_MS);
+            rokka.add(events[i], TIME_OUT_IN_MS);
         }
 
-        result = rokka.add(events[16],TIME_OUT_IN_MS);
+        result = rokka.add(events[16], TIME_OUT_IN_MS);
         Assert.assertFalse(result);
 
         Object resultElem = rokka.remove();
-        Assert.assertEquals(events[6],resultElem);
+        Assert.assertEquals(events[6], resultElem);
 
-        result = rokka.add(events[16],TIME_OUT_IN_MS);
+        result = rokka.add(events[16], TIME_OUT_IN_MS);
         Assert.assertTrue(result);
     }
 }

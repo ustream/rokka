@@ -2,18 +2,12 @@ package tv.ustream.rokka;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.misc.Unsafe;
 import tv.ustream.rokka.events.RokkaEvent;
 import tv.ustream.rokka.events.RokkaOutEvent;
 
-import java.lang.reflect.Field;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicReferenceArray;
 
 /**
  * Rokka: High Performance Inter-Thread Messaging Libaray
@@ -24,6 +18,7 @@ public final class Rokka
 {
     private static final int DEFAULT_MAX_ROKKA_ARRAY_SIZE = 1 * 1000 * 1000;
     private final Logger log = LoggerFactory.getLogger(Rokka.class);
+    private static final int RADIX = 10;
 
     public static int convertStringtoInteger(final String stringValue, final int defaultValueInt)
     {
@@ -31,16 +26,19 @@ public final class Rokka
         {
             try
             {
-                return Integer.valueOf(stringValue,10);
-            } catch (Exception e)
-            {}
+                return Integer.valueOf(stringValue, RADIX);
+            }
+            catch (Exception e)
+            {
+                return defaultValueInt;
+            }
         }
         return defaultValueInt;
     }
 
     public static void setRokkaQueueSizeCurrentThread(final int queueSize)
     {
-        if (queueSize<1)
+        if (queueSize < 1)
         {
             throw new IndexOutOfBoundsException();
         }
@@ -48,7 +46,7 @@ public final class Rokka
         System.setProperty("rokka." + cThreadName, "" + queueSize);
     }
 
-    public static final ThreadLocal<Rokka> queue = new ThreadLocal<Rokka>()
+    public static final ThreadLocal<Rokka> QUEUE = new ThreadLocal<Rokka>()
     {
         @Override
         protected Rokka initialValue()
@@ -75,7 +73,7 @@ public final class Rokka
     {
         maxQueueSize = queueSize;
         array = new Object[maxQueueSize];
-        Arrays.fill(array,EMPTY);
+        Arrays.fill(array, EMPTY);
         this.thread = Thread.currentThread();
     }
 
@@ -95,16 +93,16 @@ public final class Rokka
         for (;;)
         {
             long writeIndex = writeAtomicIndex.get();
-            long tmpWriteIndex =  writeIndex-readIndex;
-            if (tmpWriteIndex<maxQueueSize)
+            long tmpWriteIndex =  writeIndex - readIndex;
+            if (tmpWriteIndex < maxQueueSize)
             {
-                if(writeAtomicIndex.compareAndSet(writeIndex,writeIndex+1))
+                if (writeAtomicIndex.compareAndSet(writeIndex, writeIndex + 1))
                 {
-                    array[(int)(writeIndex%maxQueueSize)]=data;
+                    array[(int) (writeIndex % maxQueueSize)] = data;
                     return true;
                 }
             }
-            if ( timeOutInMs > 0 && (System.currentTimeMillis() - startTime) >= timeOutInMs )
+            if (timeOutInMs > 0 && (System.currentTimeMillis() - startTime) >= timeOutInMs)
             {
                 return false;
             }
@@ -113,7 +111,7 @@ public final class Rokka
 
     private void threadCheck()
     {
-        if (thread!=Thread.currentThread())
+        if (thread != Thread.currentThread())
         {
             throw new IllegalStateException("Invalid Thread Access");
         }
@@ -124,21 +122,21 @@ public final class Rokka
         threadCheck();
 
         Object result = null;
-        int tmpReadIndex = (int)(readIndex%maxQueueSize);
-        int maxIndex=0;
-        if (array[tmpReadIndex]==EMPTY)
+        int tmpReadIndex = (int) (readIndex % maxQueueSize);
+        int maxIndex = 0;
+        if (array[tmpReadIndex] == EMPTY)
         {
             return null;
         }
         else
         {
             long maxPos = writeAtomicIndex.get();
-            maxIndex = (int)(maxPos%maxQueueSize);
-            int arrayPos = (int)(readIndex%maxQueueSize);
-            if (array[arrayPos]!=EMPTY)
+            maxIndex = (int) (maxPos % maxQueueSize);
+            int arrayPos = (int) (readIndex % maxQueueSize);
+            if (array[arrayPos] != EMPTY)
             {
-                result=array[arrayPos];
-                array[arrayPos]=EMPTY;
+                result = array[arrayPos];
+                array[arrayPos] = EMPTY;
                 readIndex++;
             }
         }
@@ -149,34 +147,34 @@ public final class Rokka
     {
         threadCheck();
 
-        int tmpReadIndex = (int)(readIndex%maxQueueSize);
+        int tmpReadIndex = (int) (readIndex % maxQueueSize);
         Object[] result;
-        int maxIndex=0;
-        if (array[tmpReadIndex]==EMPTY)
+        int maxIndex = 0;
+        if (array[tmpReadIndex] == EMPTY)
         {
             result = new Object[0];
         }
         else
         {
             long maxPos = writeAtomicIndex.get();
-            maxIndex = (int)(maxPos%maxQueueSize);
-            result = new Object[(int)(maxPos-readIndex)];
+            maxIndex = (int) (maxPos % maxQueueSize);
+            result = new Object[(int) (maxPos - readIndex)];
             long i;
             int arrayPos;
-            for (i = readIndex; i <maxPos; i++)
+            for (i = readIndex; i < maxPos; i++)
             {
-                arrayPos = (int)(i%maxQueueSize);
-                if (array[arrayPos]!=EMPTY)
+                arrayPos = (int) (i % maxQueueSize);
+                if (array[arrayPos] != EMPTY)
                 {
-                    result[(int)(i-readIndex)]=array[arrayPos];
-                    array[arrayPos]=EMPTY;
+                    result[(int) (i - readIndex)] = array[arrayPos];
+                    array[arrayPos] = EMPTY;
                 }
                 else
                 {
                     break;
                 }
             }
-            readIndex+=(i-readIndex);
+            readIndex += (i - readIndex);
         }
         final RokkaOutEvent rokkaOutEvent = new RokkaOutEvent(result, tmpReadIndex, maxIndex);
         return rokkaOutEvent;
@@ -184,14 +182,14 @@ public final class Rokka
 
     public void clean() throws Exception
     {
-        if (thread!=Thread.currentThread())
+        if (thread != Thread.currentThread())
         {
             throw new Exception("Invalid Thread Access");
         }
 
-        Arrays.fill(array,EMPTY);
+        Arrays.fill(array, EMPTY);
         writeAtomicIndex.set(0);
-        readIndex=0;
+        readIndex = 0;
     }
 
     public int getMaxQueueSize()

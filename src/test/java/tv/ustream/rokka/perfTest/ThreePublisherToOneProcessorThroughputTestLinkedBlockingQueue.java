@@ -1,34 +1,32 @@
 package tv.ustream.rokka.perfTest;
 
-import tv.ustream.rokka.Rokka;
 import tv.ustream.rokka.events.RokkaEvent;
 import tv.ustream.rokka.events.RokkaOutEvent;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created with IntelliJ IDEA.
  * User: bingobango
- * Date: 9/4/13
- * Time: 1:40 PM
  * To change this template use File | Settings | File Templates.
  */
-public class ThreePublisherToOneProcessorThroughputTest
+public class ThreePublisherToOneProcessorThroughputTestLinkedBlockingQueue
 {
     private static final int PUBLISHER_THREAD_NUMBER = 3;
     private static final int QUEUE_SIZE = 1024 * 64;
     private static final long ITERATIONS = 1000L * 1000L * 200L;
-    private final Rokka rokka;
+    private final LinkedBlockingQueue<RokkaEvent> queue;
 
     private final ExecutorService executor = Executors.newFixedThreadPool(PUBLISHER_THREAD_NUMBER);
 
     public static final BaseTestEvent BASE_TEST_EVENT = new BaseTestEvent();
 
-    protected ThreePublisherToOneProcessorThroughputTest()
+    protected ThreePublisherToOneProcessorThroughputTestLinkedBlockingQueue()
     {
-        Rokka.setRokkaQueueSizeCurrentThread(QUEUE_SIZE);
-        rokka = Rokka.QUEUE.get();
+        queue = new LinkedBlockingQueue<>(QUEUE_SIZE);
     }
 
     private void startTest()
@@ -46,14 +44,21 @@ public class ThreePublisherToOneProcessorThroughputTest
                 long retry = 0;
                 for (int i = 0; i < ITERATIONS; i++)
                 {
-                    if (rokka.add(BASE_TEST_EVENT, 10))
+                    try
                     {
-                        successCounter++;
+                        if (!queue.offer(BASE_TEST_EVENT, 5L, TimeUnit.MILLISECONDS))
+                        {
+                            i--;
+                            retry++;
+                        }
+                        else
+                        {
+                            successCounter++;
+                        }
                     }
-                    else
+                    catch (InterruptedException e)
                     {
-                        i--;
-                        retry++;
+                        e.printStackTrace();
                     }
                 }
                 long end = System.currentTimeMillis();
@@ -68,12 +73,15 @@ public class ThreePublisherToOneProcessorThroughputTest
         long removeElemCount = 0;
         RokkaOutEvent removeElems;
         long startTime = System.currentTimeMillis();
+        Object resultElem;
         while (removeElemCount < ITERATIONS * PUBLISHER_THREAD_NUMBER)
         {
-            removeElems = rokka.removeAll();
-            for (RokkaEvent baseEvent : removeElems)
+            resultElem = queue.poll();
+
+            if (resultElem != null)
             {
                 removeElemCount++;
+                continue;
             }
 
             try
@@ -87,13 +95,14 @@ public class ThreePublisherToOneProcessorThroughputTest
         }
         long endTime = (System.currentTimeMillis() - startTime);
         System.out.println("Sum remove time:" + endTime + ".ms ,count:" + removeElemCount
-                + " ,tcps:" + (removeElemCount * 1000 / endTime));
+                + " ,tcps:" + (removeElemCount / endTime * 1000));
         executor.shutdown();
     }
 
     public static void main(final String[] args) throws Exception
     {
-        ThreePublisherToOneProcessorThroughputTest test = new ThreePublisherToOneProcessorThroughputTest();
+        ThreePublisherToOneProcessorThroughputTestLinkedBlockingQueue
+                test = new ThreePublisherToOneProcessorThroughputTestLinkedBlockingQueue();
         test.startTest();
     }
 
