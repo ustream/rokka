@@ -1,5 +1,6 @@
-package tv.ustream.rokka.perfTest;
+package tv.ustream.rokka;
 
+import org.junit.Test;
 import tv.ustream.rokka.events.RokkaEvent;
 import tv.ustream.rokka.events.RokkaOutEvent;
 
@@ -13,18 +14,17 @@ import java.util.concurrent.Executors;
  * User: bingobango
  * To change this template use File | Settings | File Templates.
  */
-public class ThreePublisherToOneProcessorThroughputTestSynchronized
+public class OnePublisherToOneProcessorThroughputTestSynchronized
 {
-    private static final int PUBLISHER_THREAD_NUMBER = 3;
     private static final int QUEUE_SIZE = 1024 * 64;
     private static final long ITERATIONS = 1000L * 1000L * 200L;
     private final List<RokkaEvent> queue;
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(PUBLISHER_THREAD_NUMBER);
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     public static final BaseTestEvent BASE_TEST_EVENT = new BaseTestEvent();
 
-    protected ThreePublisherToOneProcessorThroughputTestSynchronized()
+    public OnePublisherToOneProcessorThroughputTestSynchronized()
     {
         queue = new ArrayList<>(QUEUE_SIZE);
     }
@@ -51,18 +51,15 @@ public class ThreePublisherToOneProcessorThroughputTestSynchronized
                 }
                 long end = System.currentTimeMillis();
                 System.out.println("Sum add time:" + (end - start) + ".ms ,success:" + successCounter
-                        + " ,tcps:" + (ITERATIONS * 1000) / (end - start));
+                        + " ,tcps:" + (ITERATIONS * 1000 / (end - start)));
             }
         };
-        for (int i = 0; i < PUBLISHER_THREAD_NUMBER; i++)
-        {
-            executor.execute(r);
-        }
+        executor.execute(r);
         long removeElemCount = 0;
         RokkaOutEvent removeElems;
         long startTime = System.currentTimeMillis();
         Object[] resultElems;
-        while (removeElemCount < ITERATIONS * PUBLISHER_THREAD_NUMBER)
+        while (removeElemCount < ITERATIONS)
         {
             synchronized (queue)
             {
@@ -70,7 +67,6 @@ public class ThreePublisherToOneProcessorThroughputTestSynchronized
                 queue.clear();
             }
             removeElemCount += resultElems.length;
-
             try
             {
                 Thread.sleep(1);
@@ -86,11 +82,11 @@ public class ThreePublisherToOneProcessorThroughputTestSynchronized
         executor.shutdown();
     }
 
-    public static void main(final String[] args) throws Exception
+    @Test
+    public void test()
     {
-        ThreePublisherToOneProcessorThroughputTestSynchronized
-                test = new ThreePublisherToOneProcessorThroughputTestSynchronized();
+        OnePublisherToOneProcessorThroughputTestSynchronized test =
+                new OnePublisherToOneProcessorThroughputTestSynchronized();
         test.startTest();
     }
-
 }

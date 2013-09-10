@@ -1,35 +1,32 @@
-package tv.ustream.rokka.perfTest;
+package tv.ustream.rokka;
 
+import org.junit.Test;
+import tv.ustream.rokka.Rokka;
 import tv.ustream.rokka.events.RokkaEvent;
 import tv.ustream.rokka.events.RokkaOutEvent;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created with IntelliJ IDEA.
  * User: bingobango
  * To change this template use File | Settings | File Templates.
  */
-public class ThreePublisherToOneProcessorThroughputTestReentrantLock
+public class OnePublisherToOneProcessorThroughputTest
 {
-    private static final int PUBLISHER_THREAD_NUMBER = 3;
     private static final int QUEUE_SIZE = 1024 * 64;
     private static final long ITERATIONS = 1000L * 1000L * 200L;
-    private final List<RokkaEvent> queue;
-    private final ReentrantLock lock;
+    private final Rokka rokka;
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(PUBLISHER_THREAD_NUMBER);
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     public static final BaseTestEvent BASE_TEST_EVENT = new BaseTestEvent();
 
-    protected ThreePublisherToOneProcessorThroughputTestReentrantLock()
+    public OnePublisherToOneProcessorThroughputTest()
     {
-        queue = new ArrayList<>(QUEUE_SIZE);
-        lock = new ReentrantLock();
+        Rokka.setRokkaQueueSizeCurrentThread(QUEUE_SIZE);
+        rokka = Rokka.QUEUE.get();
     }
 
     private void startTest()
@@ -44,45 +41,36 @@ public class ThreePublisherToOneProcessorThroughputTestReentrantLock
             {
                 long successCounter = 0;
                 long start = System.currentTimeMillis();
+                long retry = 0;
                 for (int i = 0; i < ITERATIONS; i++)
                 {
-                    lock.lock();
-                    try
+                    if (rokka.add(BASE_TEST_EVENT, 10))
                     {
-                        queue.add(BASE_TEST_EVENT);
                         successCounter++;
                     }
-                    finally
+                    else
                     {
-                        lock.unlock();
+                        i--;
+                        retry++;
                     }
                 }
                 long end = System.currentTimeMillis();
-                System.out.println("Sum add time:" + (end - start) + ".ms ,success:" + successCounter
-                        + " ,tcps:" + (ITERATIONS * 1000 / (end - start)));
+                System.out.println("Sum add time:" + (end - start) + ".ms ,success:"
+                        + successCounter + " ,retry:" + retry + " ,tcps:"
+                        + (ITERATIONS * 1000 / (end - start)));
             }
         };
-        for (int i = 0; i < PUBLISHER_THREAD_NUMBER; i++)
-        {
-            executor.execute(r);
-        }
+        executor.execute(r);
         long removeElemCount = 0;
         RokkaOutEvent removeElems;
         long startTime = System.currentTimeMillis();
-        Object[] resultElems;
-        while (removeElemCount < ITERATIONS * PUBLISHER_THREAD_NUMBER)
+        while (removeElemCount < ITERATIONS)
         {
-            lock.lock();
-            try
+            removeElems = rokka.removeAll();
+            for (RokkaEvent baseEvent : removeElems)
             {
-                resultElems = queue.toArray(new Object[0]);
-                queue.clear();
+                removeElemCount++;
             }
-            finally
-            {
-                lock.unlock();
-            }
-            removeElemCount += resultElems.length;
 
             try
             {
@@ -99,10 +87,10 @@ public class ThreePublisherToOneProcessorThroughputTestReentrantLock
         executor.shutdown();
     }
 
-    public static void main(final String[] args) throws Exception
+    @Test
+    public void test()
     {
-        ThreePublisherToOneProcessorThroughputTestReentrantLock
-                test = new ThreePublisherToOneProcessorThroughputTestReentrantLock();
+        OnePublisherToOneProcessorThroughputTest test = new OnePublisherToOneProcessorThroughputTest();
         test.startTest();
     }
 

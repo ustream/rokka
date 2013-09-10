@@ -1,4 +1,4 @@
-package tv.ustream.rokka.perfTest;
+package tv.ustream.rokka;
 
 import tv.ustream.rokka.events.RokkaEvent;
 

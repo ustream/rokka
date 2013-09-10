@@ -5,11 +5,8 @@ apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'idea'
 
-dependencies {
-    compile 'org.slf4j:slf4j-simple:1.6.1'
-    testCompile 'junit:junit:4.10'
-    testCompile 'org.mockito:mockito-all:1.9.5'
-}
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
 
 repositories {
     mavenCentral()
@@ -17,4 +14,52 @@ repositories {
 
 task wrapper(type: Wrapper) {
     gradleVersion = '1.6'
+}
+
+sourceSets {
+    perf.java.srcDir 'src/perftest/java'
+}
+
+dependencies {
+    compile 'org.slf4j:slf4j-simple:1.6.1'
+    testCompile 'junit:junit:4.10'
+    testCompile 'org.mockito:mockito-all:1.9.5'
+    perfCompile 'junit:junit:4.10'
+}
+
+compilePerfJava {
+    classpath += sourceSets.main.runtimeClasspath
+}
+
+def perfTests = [Test: '**/*ThroughputTest*.class']
+
+def createPerfTest = { type, pattern ->
+    task("perf$type", type: Test, dependsOn: ['classes', 'perfClasses'], group: 'Performance test') {
+        outputs.upToDateWhen { false }    // always run perf tests, even if no inputs have changed
+        testClassesDir = sourceSets.perf.output.classesDir
+        classpath = sourceSets.perf.runtimeClasspath + sourceSets.main.runtimeClasspath
+        include pattern
+        testLogging.showStandardStreams = true
+    }
+}
+
+perfTests.each(createPerfTest)
+
+tasks.addRule('Pattern: perfTestSingle<ClassName>') { taskName ->
+    if (taskName.startsWith('perfTestSingle')) {
+        def type = taskName - 'perf'
+        def pattern = "**/${taskName - 'perfTestSingle'}.class"
+        createPerfTest(type, pattern)
+    }
+}
+
+build.dependsOn perfClasses
+
+task listJars << {
+    configurations.perfCompile.each { file -> println file.name }
+}
+
+task tempLibs(type: Sync) {
+    from configurations.perfCompile
+    into('templib')
 }
