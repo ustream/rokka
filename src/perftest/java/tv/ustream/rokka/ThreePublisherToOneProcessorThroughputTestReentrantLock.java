@@ -1,8 +1,6 @@
 package tv.ustream.rokka;
 
 import org.junit.Test;
-import tv.ustream.rokka.events.RokkaEvent;
-import tv.ustream.rokka.events.RokkaOutEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +18,7 @@ public class ThreePublisherToOneProcessorThroughputTestReentrantLock
     private static final int PUBLISHER_THREAD_NUMBER = 3;
     private static final int QUEUE_SIZE = 1024 * 64;
     private static final long ITERATIONS = 1000L * 1000L * 200L;
-    private final List<RokkaEvent> queue;
+    private final List<BaseTestEvent> queue;
     private final ReentrantLock lock;
 
     private final ExecutorService executor = Executors.newFixedThreadPool(PUBLISHER_THREAD_NUMBER);
@@ -68,7 +66,6 @@ public class ThreePublisherToOneProcessorThroughputTestReentrantLock
             executor.execute(r);
         }
         long removeElemCount = 0;
-        RokkaOutEvent removeElems;
         long startTime = System.currentTimeMillis();
         Object[] resultElems;
         while (removeElemCount < ITERATIONS * PUBLISHER_THREAD_NUMBER)
@@ -101,7 +98,7 @@ public class ThreePublisherToOneProcessorThroughputTestReentrantLock
     }
 
     @Test
-    public void test()
+    public final void test()
     {
         ThreePublisherToOneProcessorThroughputTestReentrantLock
                 test = new ThreePublisherToOneProcessorThroughputTestReentrantLock();

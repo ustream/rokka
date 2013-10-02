@@ -1,8 +1,6 @@
 package tv.ustream.rokka;
 
 import org.junit.Test;
-import tv.ustream.rokka.events.RokkaEvent;
-import tv.ustream.rokka.events.RokkaOutEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +16,7 @@ public class OnePublisherToOneProcessorThroughputTestSynchronized
 {
     private static final int QUEUE_SIZE = 1024 * 64;
     private static final long ITERATIONS = 1000L * 1000L * 200L;
-    private final List<RokkaEvent> queue;
+    private final List<BaseTestEvent> queue;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -56,7 +54,7 @@ public class OnePublisherToOneProcessorThroughputTestSynchronized
         };
         executor.execute(r);
         long removeElemCount = 0;
-        RokkaOutEvent removeElems;
+
         long startTime = System.currentTimeMillis();
         Object[] resultElems;
         while (removeElemCount < ITERATIONS)
@@ -83,7 +81,7 @@ public class OnePublisherToOneProcessorThroughputTestSynchronized
     }
 
     @Test
-    public void test()
+    public final void test()
     {
         OnePublisherToOneProcessorThroughputTestSynchronized test =
                 new OnePublisherToOneProcessorThroughputTestSynchronized();

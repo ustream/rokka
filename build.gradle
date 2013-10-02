@@ -20,6 +20,12 @@ sourceSets {
     perf.java.srcDir 'src/perftest/java'
 }
 
+idea {
+    module {
+        testSourceDirs += file("src/perftest/java")
+    }
+}
+
 dependencies {
     compile 'org.slf4j:slf4j-simple:1.6.1'
     testCompile 'junit:junit:4.10'

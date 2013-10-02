@@ -1,9 +1,7 @@
 package tv.ustream.rokka;
 
-import tv.ustream.rokka.events.RokkaEvent;
-import tv.ustream.rokka.events.RokkaOutEvent;
-
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,15 +16,14 @@ public class SimpleModulusApp
     private final int eventSize;
     private final Map<Integer, Long> result = new HashMap<Integer, Long>();
     private final ModulusWriter[] writerClass;
-    private final Rokka rokka;
+    private final RokkaBaseConsumer<SimpleRokkaEvent> rokka;
 
     protected SimpleModulusApp(final int writeThread, final int eventSize)
     {
         this.writeThreadCount = writeThread;
         this.eventSize = eventSize;
         writerClass = new ModulusWriter[writeThread];
-        Rokka.setRokkaQueueSizeCurrentThread(eventSize);
-        rokka = Rokka.QUEUE.get();
+        rokka = new RokkaBaseConsumer<SimpleRokkaEvent>();
     }
 
     private void startTest() throws InterruptedException
@@ -38,26 +35,23 @@ public class SimpleModulusApp
             es.execute(writerClass[i]);
         }
         long elemCount = 0;
-        RokkaOutEvent roe;
-        long time;
+        Iterator<SimpleRokkaEvent> simpleRokkaEventIterator;
         while (elemCount < writeThreadCount * eventSize)
         {
-            roe = rokka.removeAll();
-            for (RokkaEvent re : roe)
+            simpleRokkaEventIterator = rokka.getRokkaQueueIterator();
+
+            while (simpleRokkaEventIterator.hasNext())
             {
+                SimpleRokkaEvent sre = simpleRokkaEventIterator.next();
                 elemCount++;
-                if (re instanceof SimpleRokkaEvent)
+                int m = sre.getId() % 10;
+                Long v = result.get(m);
+                if (v == null)
                 {
-                    SimpleRokkaEvent sre = (SimpleRokkaEvent) re;
-                    int m = sre.getId() % 10;
-                    Long v = result.get(m);
-                    if (v == null)
-                    {
-                        v = new Long(0);
-                    }
-                    v++;
-                    result.put(m, v);
+                    v = new Long(0);
                 }
+                v++;
+                result.put(m, v);
             }
             Thread.sleep(2);
         }
@@ -67,17 +61,17 @@ public class SimpleModulusApp
 
     public static void main(final String ...args) throws InterruptedException
     {
-        SimpleModulusApp sapp = new SimpleModulusApp(3, 1000000);
+        SimpleModulusApp sapp = new SimpleModulusApp(3, 10000000);
         sapp.startTest();
     }
 
     private class ModulusWriter implements Runnable
     {
-        private final Rokka rokka;
+        private final RokkaBaseConsumer<SimpleRokkaEvent> rokka;
         private final int startIndex;
         private final int count;
 
-        public ModulusWriter(final Rokka mainRokka, final int startIndex, final int count)
+        public ModulusWriter(final RokkaBaseConsumer<SimpleRokkaEvent> mainRokka, final int startIndex, final int count)
         {
             this.rokka = mainRokka;
             this.startIndex = startIndex;
@@ -87,10 +81,13 @@ public class SimpleModulusApp
         @Override
         public void run()
         {
-            for (int i = startIndex; i < startIndex + count; i++)
+            RokkaProducer<SimpleRokkaEvent> rokkaProducer = new RokkaProducer<SimpleRokkaEvent>(65535);
+            rokka.addProducer(rokkaProducer);
+            int i;
+            for (i = startIndex; i < startIndex + count; i++)
             {
                 SimpleRokkaEvent event = new SimpleRokkaEvent(i);
-                if (!rokka.add(event, 10))
+                if (!rokkaProducer.add(event, 10))
                 {
                     i--;
                 }
@@ -98,7 +95,7 @@ public class SimpleModulusApp
         }
     }
 
-    private class SimpleRokkaEvent extends RokkaEvent
+    private class SimpleRokkaEvent
     {
         private final int id;
 
