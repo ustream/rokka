@@ -1,19 +1,25 @@
-version='1.0.0'
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.github.townsfolk:gradle-release:1.2'
+    }
+}
+
 group='tv.ustream.rokka'
 
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'idea'
-
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
+apply plugin: 'release'
 
 repositories {
     mavenCentral()
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '1.6'
+    gradleVersion = '1.9'
 }
 
 sourceSets {
@@ -68,4 +74,35 @@ task listJars << {
 task tempLibs(type: Sync) {
     from configurations.perfCompile
     into('templib')
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    allprojects {
+        from sourceSets.main.java
+    }
+}
+
+artifacts {
+    archives jar
+    archives sourcesJar
+}
+
+uploadArchives {
+    repositories.mavenDeployer {
+        snapshotRepository(url: project.'archiva.repo.snapshot') {
+            authentication(
+                userName: project.'archiva.credentials.user',
+                password: project.'archiva.credentials.pass'
+            )
+            snapshots()
+        }
+        repository(url: project.'archiva.repo.internal') {
+            authentication(
+                userName: project.'archiva.credentials.user',
+                password: project.'archiva.credentials.pass'
+            )
+            releases()
+        }
+    }
 }
