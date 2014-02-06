@@ -31,8 +31,8 @@ public final class Aggr implements Event
         if (counter >= maxCount)
         {
             System.out.println("Total: " + (total) + " per thread: " + (total / PingPongSignalTest.THREADCOUNT)
-                               + " counter: " + counter);
-            System.exit(0);
+                               + " counter: " + counter + " ,thread:" + PingPongSignalTest.THREADCOUNT);
+            PingPongSignalTest.MAIN.stopThread();
         }
     }
 }

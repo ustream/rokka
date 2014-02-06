@@ -35,6 +35,14 @@ public class RokkaPool
         }
     }
 
+    public final void stop()
+    {
+        for (int i = 0; i < rokkaThreads.length; i++)
+        {
+            rokkaThreads[i].stopThread();
+        }
+    }
+
     public final RokkaThread getRokkaThread(final int index)
     {
         return rokkaThreads[index];
@@ -47,6 +55,8 @@ public class RokkaPool
         private final int index;
 
         private final Semaphore semaphore = new Semaphore(0);
+
+        private boolean running = true;
 
         public RokkaThread(final int consumerThreadCount, final int index)
         {
@@ -77,6 +87,12 @@ public class RokkaPool
                 }
 
             }
+        }
+
+        public final void stopThread()
+        {
+            running = false;
+            semaphore.release();
         }
 
         public final RokkaSignalConsumer<RokkaQueueElem> getConsumer()
@@ -117,7 +133,7 @@ public class RokkaPool
                     t++;
                 }
 //                System.out.println("end[" + index + "]" + t);
-            } while (true);
+            } while (running);
         }
     }
 

@@ -43,7 +43,7 @@ compilePerfJava {
     classpath += sourceSets.main.runtimeClasspath
 }
 
-def perfTests = [Test: '**/*ThroughputTest*.class']
+def perfTests = [Test: '**/*ThroughputTest*.class',Ping: '**/PingPongSignalTest.class']
 
 def createPerfTest = { type, pattern ->
     task("perf$type", type: Test, dependsOn: ['classes', 'perfClasses'], group: 'Performance test') {
