@@ -6,9 +6,7 @@ import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Created with IntelliJ IDEA.
  * User: bingobango
- * To change this template use File | Settings | File Templates.
  */
 public class RokkaThreadConsumer<EventType> extends RokkaBaseConsumer<EventType> implements Runnable
 {

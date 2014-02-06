@@ -71,6 +71,7 @@ public class SimpleModulusApp
         private final int startIndex;
         private final int count;
 
+
         public ModulusWriter(final RokkaBaseConsumer<SimpleRokkaEvent> mainRokka, final int startIndex, final int count)
         {
             this.rokka = mainRokka;

@@ -4,23 +4,30 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * User: bingobango
+ * Created by bingobango
  */
-public class RokkaProducer<EventType> extends RokkaBaseProducer<EventType>
+public class RokkaSignalProducer<EventType> extends RokkaBaseProducer<EventType>
 {
     private final RokkaQueue<EventType> queue1;
     private final RokkaQueue<EventType> queue2;
     private final AtomicReference<RokkaQueue<EventType>> actualRokkaQueueRef =
-                            new AtomicReference<RokkaQueue<EventType>>();
+            new AtomicReference<RokkaQueue<EventType>>();
     private final AtomicBoolean isFreeLock = new AtomicBoolean(true);
 
-    public RokkaProducer(final int queueSize)
+    private final RokkaSignalConsumer<EventType> signalConsumer;
+    private volatile boolean signalEnabled = false;
+
+    public RokkaSignalProducer(final int queueSize, final RokkaSignalConsumer<EventType> rokkaSignalConsumer)
     {
         queue1 = new RokkaQueue(queueSize);
         queue2 = new RokkaQueue(queueSize);
         actualRokkaQueueRef.set(queue1);
+
+        signalConsumer = rokkaSignalConsumer;
+        signalEnabled = signalConsumer != null;
     }
 
+    @Override
     public final int getMaxQueueSize()
     {
         return queue1.getQueueSize();
@@ -36,6 +43,10 @@ public class RokkaProducer<EventType> extends RokkaBaseProducer<EventType>
                 final RokkaQueue<EventType> tq = actualRokkaQueueRef.get();
                 if (tq.add(elem))
                 {
+                    if (signalEnabled && tq.getPosition() == 1)
+                    {
+                        signalConsumer.signal(this);
+                    }
                     isFreeLock.set(true);
                     return;
                 }
@@ -67,6 +78,10 @@ public class RokkaProducer<EventType> extends RokkaBaseProducer<EventType>
                 final RokkaQueue<EventType> tq = actualRokkaQueueRef.get();
                 if (tq.add(elem))
                 {
+                    if (signalEnabled && tq.getPosition() == 1)
+                    {
+                        signalConsumer.signal(this);
+                    }
                     isFreeLock.set(true);
                     return true;
                 }
@@ -99,12 +114,20 @@ public class RokkaProducer<EventType> extends RokkaBaseProducer<EventType>
                 if (actualRokkaQueueRef.get() == queue1)
                 {
                     actualRokkaQueueRef.set(queue2);
+                    if (signalConsumer != null)
+                    {
+                        signalEnabled = true;
+                    }
                     isFreeLock.set(true);
                     return queue1;
                 }
                 else
                 {
                     actualRokkaQueueRef.set(queue1);
+                    if (signalConsumer != null)
+                    {
+                        signalEnabled = true;
+                    }
                     isFreeLock.set(true);
                     return queue2;
                 }

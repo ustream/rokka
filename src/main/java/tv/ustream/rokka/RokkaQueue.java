@@ -3,9 +3,7 @@ package tv.ustream.rokka;
 import java.util.Arrays;
 
 /**
- * Created with IntelliJ IDEA.
  * User: bingobango
- * To change this template use File | Settings | File Templates.
  */
 public final class RokkaQueue<EventType>
 {

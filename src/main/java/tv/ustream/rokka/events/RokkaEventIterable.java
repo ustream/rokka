@@ -2,27 +2,44 @@ package tv.ustream.rokka.events;
 
 
 import tv.ustream.rokka.RokkaQueue;
+import tv.ustream.rokka.RokkaSignalConsumer;
 
 import java.util.Iterator;
 
 /**
- * Created with IntelliJ IDEA.
  * User: bingobango
- * To change this template use File | Settings | File Templates.
  */
 public class RokkaEventIterable<EventType> implements Iterable<EventType>
 {
     private final RokkaQueue<EventType>[] rokkaQueues;
+    private final RokkaSignalConsumer<EventType> rokkaSignalConsumer;
+    private ResultEventsIterator iterator = null;
 
     public RokkaEventIterable(final RokkaQueue<EventType>[] sources)
     {
+        this(sources, null);
+    }
+
+    public RokkaEventIterable(final RokkaQueue<EventType>[] sources, final RokkaSignalConsumer<EventType> rokkaSignalConsumer)
+    {
         this.rokkaQueues = sources;
+        this.rokkaSignalConsumer = rokkaSignalConsumer;
     }
 
     @Override
     public final Iterator<EventType> iterator()
     {
-        return new ResultEventsIterator();
+        if (iterator == null)
+        {
+            iterator = new ResultEventsIterator();
+        }
+        return iterator;
+    }
+
+    public final boolean hasNext()
+    {
+        if (iterator != null) return iterator.hasNextNoAction();
+        return false;
     }
 
     public final void clear()
@@ -44,9 +61,18 @@ public class RokkaEventIterable<EventType> implements Iterable<EventType>
             generatenextElem();
         }
 
+        public boolean hasNextNoAction()
+        {
+            return nextElem != null;
+        }
+
         @Override
         public boolean hasNext()
         {
+            if (nextElem == null && rokkaSignalConsumer != null)
+            {
+                rokkaSignalConsumer.endIterable();
+            }
             return nextElem != null;
         }
 
@@ -85,6 +111,10 @@ public class RokkaEventIterable<EventType> implements Iterable<EventType>
         {
             if (nextElem == null)
             {
+                if (rokkaSignalConsumer != null)
+                {
+                    rokkaSignalConsumer.endIterable();
+                }
                 return null;
             }
             EventType result = nextElem;

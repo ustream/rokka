@@ -6,9 +6,7 @@ import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Created with IntelliJ IDEA.
  * User: bingobango
- * To change this template use File | Settings | File Templates.
  */
 public class RokkaBaseConsumer<EventType>
 {
@@ -21,7 +19,6 @@ public class RokkaBaseConsumer<EventType>
     {
         rokkaProducerContainer.set(new RokkaProducerContainer<EventType>());
     }
-
 
     public final void addProducer(final RokkaProducer rokkaProducer)
     {
