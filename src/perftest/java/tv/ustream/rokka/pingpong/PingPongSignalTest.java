@@ -10,7 +10,7 @@ import java.util.concurrent.CountDownLatch;
 public final class PingPongSignalTest
 {
     public static final int ROKKA_QUEUE_SIZE = 65535;
-    public static final int THREADCOUNT = 12;
+    public static final int THREADCOUNT = 6;
     public static final int ACTORCOUNT = 180000;
     public static final int RUNTIMESEC = 20;
 
@@ -30,9 +30,7 @@ public final class PingPongSignalTest
 
     private void start()
     {
-
-        System.out.print("actorpair:" + ACTORCOUNT + " runtime: " + RUNTIMESEC + " " + " thread: " + THREADCOUNT);
-        // write your code here
+        System.out.println("actorpair:" + ACTORCOUNT + " runtime: " + RUNTIMESEC + " " + " thread: " + THREADCOUNT);
 
         int k = 0;
         for (int i = 0; i < ACTORCOUNT; i++)
@@ -41,14 +39,15 @@ public final class PingPongSignalTest
             {
                 k = 0;
             }
-            Actor aActor = new Actor(scheduler, scheduler.getRokkaThread(k++), RUNTIMESEC);
+            Actor aActor = new Actor(scheduler.getRokkaThread(k++), RUNTIMESEC);
             if (k >= THREADCOUNT)
             {
                 k = 0;
             }
-            Actor bActor = new Actor(scheduler, scheduler.getRokkaThread(k++), RUNTIMESEC);
+            Actor bActor = new Actor(scheduler.getRokkaThread(k++), RUNTIMESEC);
             bActor.tell(new Ping(aActor, 0));
         }
+        System.out.println("-------create actor end------");
     }
 
     public void stopThread()
@@ -59,10 +58,9 @@ public final class PingPongSignalTest
     @Test
     public void test() throws Exception
     {
-        PingPongSignalTest ppst = new PingPongSignalTest();
-        ppst.start();
-        ppst.countDownLatch.await();
-        ppst.scheduler.stop();
+        start();
+        countDownLatch.await();
+        scheduler.stop();
     }
 
     public Aggr getAggr()

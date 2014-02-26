@@ -27,8 +27,11 @@ public final class RokkaQueue<EventType>
 
     public void clear()
     {
+        if (position > 0)
+        {
+            Arrays.fill(queue, 0, position, null);
+        }
         position = 0;
-        Arrays.fill(queue, null);
     }
 
     public int getPosition()
@@ -59,5 +62,11 @@ public final class RokkaQueue<EventType>
     public int getQueueSize()
     {
         return queue.length;
+    }
+
+    @Override
+    public String toString()
+    {
+        return "RokkaQueue[" + position + "]";
     }
 }

@@ -19,4 +19,10 @@ public class Pong
     {
         return listener;
     }
+
+    @Override
+    public String toString()
+    {
+        return "Pong[" + listener.getMainThread() + "] " + listener.getMainThread().getIndex();
+    }
 }

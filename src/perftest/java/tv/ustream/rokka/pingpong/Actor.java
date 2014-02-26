@@ -5,15 +5,13 @@ package tv.ustream.rokka.pingpong;
  */
 public class Actor implements Event
 {
-    private RokkaPool scheduler;
     private int runtimesec;
     private int counter;
     private long started;
     private RokkaPool.RokkaThread mainThread;
 
-    public Actor(final RokkaPool scheduler, final RokkaPool.RokkaThread mainThread, final int runtimesec)
+    public Actor(final RokkaPool.RokkaThread mainThread, final int runtimesec)
     {
-        this.scheduler = scheduler;
         this.runtimesec = runtimesec;
         this.mainThread = mainThread;
     }
@@ -39,6 +37,7 @@ public class Actor implements Event
 
             if (System.currentTimeMillis() - started > (runtimesec * 1000))
             {
+//                System.out.println("End[" + mainThread.getIndex() + "]:" + PingPongSignalTest.MAIN.getAggr());
                 mainThread.addPoll(PingPongSignalTest.MAIN.getAggr(), (counter / PingPongSignalTest.RUNTIMESEC));
             }
             else
@@ -52,5 +51,11 @@ public class Actor implements Event
     public final void tell(final Object obj)
     {
         mainThread.addPoll(this, obj);
+    }
+
+    @Override
+    public String toString()
+    {
+        return "Actor[" + mainThread + "]" + mainThread.getIndex();
     }
 }

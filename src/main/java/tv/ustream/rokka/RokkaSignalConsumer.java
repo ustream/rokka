@@ -15,8 +15,11 @@ public class RokkaSignalConsumer<EventType>
     private final SignalApplication signalApplication;
 
     private RokkaEventIterable<EventType> rokkaQueueIterator = null;
-    private Iterable<EventType> iterable = null;
-    private final AtomicBoolean eventProgress = new AtomicBoolean(false);
+
+    private final AtomicReference<RokkaProducerSignalContainer<EventType>> workingSignalContainer =
+                                                                                            new AtomicReference<>();
+
+    private final AtomicBoolean signalContainerLock = new AtomicBoolean(true);
 
     public RokkaSignalConsumer(final SignalApplication signalApplication)
     {
@@ -37,33 +40,53 @@ public class RokkaSignalConsumer<EventType>
 
     public final void signal(final RokkaSignalProducer<EventType> rokkaProducer)
     {
-        RokkaProducerSignalContainer<EventType> rpsc;
+        signal(rokkaProducer, true);
+    }
+
+    public final void signal(final RokkaSignalProducer<EventType> rokkaProducer, final boolean callSingalApp)
+    {
         RokkaProducerSignalContainer<EventType> newRpsc;
         do
         {
-            rpsc = signalContainer.get();
-            if (rpsc == null)
+            if (signalContainerLock.compareAndSet(true, false))
             {
-                newRpsc = new RokkaProducerSignalContainer<>(rokkaProducer);
+                final RokkaProducerSignalContainer<EventType> rpsc = signalContainer.get();
+                if (rpsc == null)
+                {
+                    newRpsc = new RokkaProducerSignalContainer<>(rokkaProducer);
+                }
+                else
+                {
+                    newRpsc = rpsc.add(rokkaProducer);
+                }
+                signalContainer.set(newRpsc);
+                signalContainerLock.set(true);
+                if (rpsc == null && callSingalApp)
+                {
+                    signalApplication.signal(this);
+                }
+                break;
             }
-            else
-            {
-                newRpsc = rpsc.add(rokkaProducer);
-            }
-        } while (!signalContainer.compareAndSet(rpsc, newRpsc));
-        if (rpsc == null && !eventProgress.get())
-        {
-            signalApplication.signal(this);
-        }
+        } while(true);
     }
 
     private void generateRokkaEventQueue()
     {
-        eventProgress.set(true);
-        final RokkaProducerSignalContainer<EventType> pc = signalContainer.getAndSet(null);
-        if (pc != null)
+        do
         {
-            final RokkaSignalProducer<EventType>[] rokkaProducers = pc.values;
+            if (signalContainerLock.compareAndSet(true, false))
+            {
+                RokkaProducerSignalContainer<EventType> pc = signalContainer.getAndSet(null);
+                workingSignalContainer.set(pc);
+                signalContainerLock.set(true);
+                break;
+            }
+        } while (true);
+        final RokkaProducerSignalContainer<EventType> rpsc = workingSignalContainer.get();
+        if (rpsc != null)
+        {
+
+            final RokkaSignalProducer<EventType>[] rokkaProducers = rpsc.values;
             final RokkaQueue<EventType>[] rokkaQueues = new RokkaQueue[rokkaProducers.length];
             int pos = 0;
             for (RokkaSignalProducer<EventType> pt : rokkaProducers)
@@ -83,7 +106,7 @@ public class RokkaSignalConsumer<EventType>
 
     public final Iterator<EventType> getRokkaQueueIterator()
     {
-        if (rokkaQueueIterator == null || !rokkaQueueIterator.hasNext())
+        if (rokkaQueueIterator == null)
         {
             generateRokkaEventQueue();
         }
@@ -92,14 +115,32 @@ public class RokkaSignalConsumer<EventType>
 
     public final void endIterable()
     {
-        if (signalContainer.get() != null)
+        rokkaQueueIterator = null;
+        final RokkaProducerSignalContainer<EventType> pc = workingSignalContainer.getAndSet(null);
+        if (pc != null)
         {
-            eventProgress.compareAndSet(true, false);
-            signalApplication.signal(this);
+            for (RokkaSignalProducer<EventType> rpsc : pc.values)
+            {
+                rpsc.enabledSignalFromConsumer();
+            }
         }
-        else
+        boolean isSendSignalToApplication = false;
+        do
         {
-            eventProgress.compareAndSet(true, false);
+            if (signalContainerLock.compareAndSet(true, false))
+            {
+                if (signalContainer.get() != null)
+                {
+                    isSendSignalToApplication = true;
+                }
+                signalContainerLock.set(true);
+                break;
+            }
+        } while (true);
+
+        if (isSendSignalToApplication)
+        {
+            signalApplication.signal(this);
         }
     }
 

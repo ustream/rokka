@@ -20,7 +20,8 @@ public class RokkaEventIterable<EventType> implements Iterable<EventType>
         this(sources, null);
     }
 
-    public RokkaEventIterable(final RokkaQueue<EventType>[] sources, final RokkaSignalConsumer<EventType> rokkaSignalConsumer)
+    public RokkaEventIterable(final RokkaQueue<EventType>[] sources,
+                              final RokkaSignalConsumer<EventType> rokkaSignalConsumer)
     {
         this.rokkaQueues = sources;
         this.rokkaSignalConsumer = rokkaSignalConsumer;
@@ -38,8 +39,7 @@ public class RokkaEventIterable<EventType> implements Iterable<EventType>
 
     public final boolean hasNext()
     {
-        if (iterator != null) return iterator.hasNextNoAction();
-        return false;
+        return iterator != null && iterator.hasNextNoAction();
     }
 
     public final void clear()

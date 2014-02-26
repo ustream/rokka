@@ -18,4 +18,10 @@ public class Ping
     {
         return listener;
     }
+
+    @Override
+    public String toString()
+    {
+        return "Ping[" + listener.getMainThread() + "] " + listener.getMainThread().getIndex();
+    }
 }

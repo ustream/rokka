@@ -85,7 +85,6 @@ public class RokkaProducer<EventType> extends RokkaBaseProducer<EventType>
             }
         }
         while (startTime + timeOut > System.currentTimeMillis());
-        isFreeLock.compareAndSet(false, true);
         return false;
     }
 

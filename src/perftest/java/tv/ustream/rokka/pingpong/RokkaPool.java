@@ -1,11 +1,11 @@
 package tv.ustream.rokka.pingpong;
 
+import tv.ustream.rokka.RokkaSemaphore;
 import tv.ustream.rokka.RokkaSignalConsumer;
 import tv.ustream.rokka.RokkaSignalProducer;
 import tv.ustream.rokka.SignalApplication;
 
 import java.util.Iterator;
-import java.util.concurrent.Semaphore;
 
 /**
  * Created by bingobango on 2/6/14.
@@ -54,9 +54,9 @@ public class RokkaPool
         private final RokkaSignalProducer<RokkaQueueElem>[] producers;
         private final int index;
 
-        private final Semaphore semaphore = new Semaphore(0);
+        private final RokkaSemaphore semaphore = new RokkaSemaphore();
 
-        private boolean running = true;
+        private volatile boolean running = true;
 
         public RokkaThread(final int consumerThreadCount, final int index)
         {
@@ -76,16 +76,7 @@ public class RokkaPool
             if (event != null)
             {
                 int threadIndex = event.getMainThread().getIndex();
-//                System.out.println("ThreadIndex: "+ threadIndex + " ," + producers.length);
-                if (threadIndex < producers.length)
-                {
-                    producers[threadIndex].add(new RokkaQueueElem(event, param));
-                }
-                else
-                {
-                    System.out.println("Error");
-                }
-
+                producers[threadIndex].add(new RokkaQueueElem(event, param));
             }
         }
 
@@ -113,27 +104,24 @@ public class RokkaPool
 
         public final void run()
         {
+            setName("RokkaThread-" + index);
+            long t = 0;
+            RokkaQueueElem rqe;
             do
             {
-                try
-                {
-                    semaphore.acquire();
-                }
-                catch (Exception e)
-                {
-                    e.printStackTrace();
-                }
+                semaphore.acquire();
+
                 Iterator<RokkaQueueElem> iterator = consumer.getRokkaQueueIterator();
-                RokkaQueueElem rqe;
-                int t = 0;
+
                 while (iterator.hasNext())
                 {
                     rqe = iterator.next();
                     rqe.getEvent().execute(rqe.getParam());
                     t++;
                 }
-//                System.out.println("end[" + index + "]" + t);
             } while (running);
+
+            System.out.println("Exit rokka thread[" + index + "]");
         }
     }
 
